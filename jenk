@@ -1,0 +1,40 @@
+pipeline {
+    agent any
+
+    environment {
+        REDHAT_URL = "https://your-redhat-url.com/httpd" // Replace with actual Red Hat URL
+        JFROG_URL = "https://your-jfrog-url.com/artifactory/repo" // Replace with actual JFrog URL
+    }
+
+    stages {
+        stage('Fetch Latest Version from RedHat') {
+            steps {
+                script {
+                    def redhatVersion = sh(script: "curl -s $REDHAT_URL | jq -r '.latestVersion'", returnStdout: true).trim()
+                    echo "Latest Red Hat version: ${redhatVersion}"
+                    env.LATEST_VERSION = redhatVersion
+                }
+            }
+        }
+
+        stage('Check if Version Exists in JFrog') {
+            steps {
+                script {
+                    def response = sh(script: "curl -s -u user:password $JFROG_URL/${env.LATEST_VERSION}", returnStdout: true).trim()
+                    
+                    if (response.contains("Not Found")) {
+                        echo "Version ${env.LATEST_VERSION} is NOT present in JFrog."
+                    } else {
+                        echo "Version ${env.LATEST_VERSION} is available in JFrog."
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline execution completed."
+        }
+    }
+}
